@@ -11,27 +11,19 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-// 🎨 Colores tipo Kahoot
-const COLORS = [
-  "#e74c3c",
-  "#3498db",
-  "#2ecc71",
-  "#f1c40f",
-  "#9b59b6",
-  "#e67e22"
-];
-
+// 🎨 Colores
+const COLORS = ["#e74c3c","#3498db","#2ecc71","#f1c40f","#9b59b6","#e67e22"];
 let colorIndex = 0;
 
 let players = {};
 let roundActive = false;
-let winner = null; // ahora será ID
+let winner = null;
 
 const ADMIN_PASSWORD = "admin123";
 
 io.on("connection", (socket) => {
 
-  console.log("Nuevo usuario conectado:", socket.id);
+  console.log("Conectado:", socket.id);
 
   // 👥 JOIN
   socket.on("join", (name) => {
@@ -66,7 +58,6 @@ io.on("connection", (socket) => {
 
     winner = null;
     roundActive = true;
-
     io.emit("countdown");
   });
 
@@ -75,19 +66,17 @@ io.on("connection", (socket) => {
     if (!players[socket.id]) return;
 
     if (roundActive && !winner) {
-      winner = socket.id; // 🔥 guardamos ID
+      winner = socket.id;
       roundActive = false;
-
-      io.emit("winner", players[socket.id]); // mandamos TODO el jugador
+      io.emit("winner", players[socket.id]);
     }
   });
 
-  // ➕ SUMAR PUNTOS (por ID)
+  // ➕ SUMAR PUNTOS
   socket.on("addPoint", (id) => {
     if (!players[id]) return;
 
     players[id].points++;
-
     io.emit("updatePlayers", players);
   });
 
@@ -102,13 +91,39 @@ io.on("connection", (socket) => {
     io.emit("updatePlayers", players);
   });
 
+  // 🧹 RESET TOTAL
+  socket.on("resetAll", () => {
+    if (!socket.data.isAdmin) return;
+
+    players = {};
+    winner = null;
+    roundActive = false;
+
+    io.emit("updatePlayers", players);
+    io.emit("reset");
+  });
+
+  // ❌ ELIMINAR + DESCONECTAR
+  socket.on("removePlayer", (id) => {
+    if (!socket.data.isAdmin) return;
+
+    const target = io.sockets.sockets.get(id);
+
+    if (target) {
+      target.emit("kicked");
+      target.disconnect(true);
+    }
+
+    delete players[id];
+    io.emit("updatePlayers", players);
+  });
+
   // 🔁 RESET RONDA
   socket.on("resetRound", () => {
     if (!socket.data.isAdmin) return;
 
     winner = null;
     roundActive = false;
-
     io.emit("reset");
   });
 
