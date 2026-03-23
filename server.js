@@ -42,7 +42,7 @@ io.on("connection", (socket) => {
     io.emit("updatePlayers", players);
   });
 
-  // 🔐 ADMIN LOGIN
+  // 🔐 ADMIN
   socket.on("adminLogin", (pass, callback) => {
     if (pass === ADMIN_PASSWORD) {
       socket.data.isAdmin = true;
@@ -52,7 +52,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ▶ INICIAR RONDA
+  // ▶ RONDA
   socket.on("startRound", () => {
     if (!socket.data.isAdmin) return;
 
@@ -72,7 +72,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ➕ SUMAR PUNTOS
+  // ➕ PUNTOS
   socket.on("addPoint", (id) => {
     if (!players[id]) return;
 
@@ -80,7 +80,7 @@ io.on("connection", (socket) => {
     io.emit("updatePlayers", players);
   });
 
-  // 🔄 RESET PUNTOS
+  // ♻ RESET PUNTOS
   socket.on("resetPoints", () => {
     if (!socket.data.isAdmin) return;
 
@@ -91,19 +91,7 @@ io.on("connection", (socket) => {
     io.emit("updatePlayers", players);
   });
 
-  // 🧹 RESET TOTAL
-  socket.on("resetAll", () => {
-    if (!socket.data.isAdmin) return;
-
-    players = {};
-    winner = null;
-    roundActive = false;
-
-    io.emit("updatePlayers", players);
-    io.emit("reset");
-  });
-
-  // ❌ ELIMINAR + DESCONECTAR
+  // ❌ ELIMINAR UNO
   socket.on("removePlayer", (id) => {
     if (!socket.data.isAdmin) return;
 
@@ -115,6 +103,28 @@ io.on("connection", (socket) => {
     }
 
     delete players[id];
+    io.emit("updatePlayers", players);
+  });
+
+  // 🔥 FINALIZAR CONCURSO (NUEVO)
+  socket.on("kickAll", () => {
+    if (!socket.data.isAdmin) return;
+
+    // Avisar a todos
+    io.emit("gameEnded");
+
+    // Desconectar a todos menos admin
+    for (let [id, s] of io.sockets.sockets) {
+      if (!s.data.isAdmin) {
+        s.disconnect(true);
+      }
+    }
+
+    // Limpiar estado
+    players = {};
+    winner = null;
+    roundActive = false;
+
     io.emit("updatePlayers", players);
   });
 
