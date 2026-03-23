@@ -26,6 +26,7 @@ io.on("connection", (socket) => {
 
   socket.on("adminLogin", (pass, callback) => {
     if (pass === ADMIN_PASSWORD) {
+      socket.data.isAdmin = true;
       callback(true);
     } else {
       callback(false);
@@ -33,12 +34,16 @@ io.on("connection", (socket) => {
   });
 
   socket.on("startRound", () => {
+    if (!socket.data.isAdmin) return;
+
     winner = null;
     roundActive = true;
     io.emit("countdown");
   });
 
   socket.on("buzz", () => {
+    if (!players[socket.id]) return; // ✅ evita errores
+
     if (roundActive && !winner) {
       winner = players[socket.id].name;
       roundActive = false;
@@ -56,6 +61,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("resetRound", () => {
+    if (!socket.data.isAdmin) return;
+
     winner = null;
     roundActive = false;
     io.emit("reset");
