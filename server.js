@@ -25,9 +25,20 @@ io.on("connection", (socket) => {
 
   console.log("Conectado:", socket.id);
 
+  // 🔥 SINCRONIZACIÓN AUTOMÁTICA
+  socket.emit("updatePlayers", players);
+
   // 👥 JOIN
   socket.on("join", (name) => {
     if (!name || name.trim() === "") return;
+
+    // 🚫 evitar nombres duplicados
+    for (let id in players) {
+      if (players[id].name === name) {
+        socket.emit("nameTaken");
+        return;
+      }
+    }
 
     const color = COLORS[colorIndex % COLORS.length];
     colorIndex++;
@@ -91,7 +102,7 @@ io.on("connection", (socket) => {
     io.emit("updatePlayers", players);
   });
 
-  // ❌ ELIMINAR UNO
+  // ❌ ELIMINAR UNO (CON DESCONEXIÓN REAL)
   socket.on("removePlayer", (id) => {
     if (!socket.data.isAdmin) return;
 
@@ -99,33 +110,35 @@ io.on("connection", (socket) => {
 
     if (target) {
       target.emit("kicked");
-      target.disconnect(true);
+      setTimeout(() => target.disconnect(true), 200);
     }
 
     delete players[id];
     io.emit("updatePlayers", players);
   });
 
-  // 🔥 FINALIZAR CONCURSO (NUEVO)
+  // 🔥 FINALIZAR CONCURSO (MEJORADO)
   socket.on("kickAll", () => {
     if (!socket.data.isAdmin) return;
 
-    // Avisar a todos
+    // Avisar primero
     io.emit("gameEnded");
 
-    // Desconectar a todos menos admin
-    for (let [id, s] of io.sockets.sockets) {
-      if (!s.data.isAdmin) {
-        s.disconnect(true);
+    // 🔥 Desconexión CONTROLADA
+    setTimeout(() => {
+      for (let [id, s] of io.sockets.sockets) {
+        if (!s.data.isAdmin) {
+          s.disconnect(true);
+        }
       }
-    }
 
-    // Limpiar estado
-    players = {};
-    winner = null;
-    roundActive = false;
+      players = {};
+      winner = null;
+      roundActive = false;
 
-    io.emit("updatePlayers", players);
+      io.emit("updatePlayers", players);
+
+    }, 500); // 🔥 clave para estabilidad
   });
 
   // 🔁 RESET RONDA
